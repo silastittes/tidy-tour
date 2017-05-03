@@ -296,4 +296,5 @@ df_list <- list(mtcars = mtcars,
 
 #the nrow function isn't important, 
 #the ability to utilize any function here is.
+df_list %>% map_int(nrow)
 

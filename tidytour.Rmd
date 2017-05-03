@@ -53,7 +53,7 @@ suppressMessages(library(xtable))
 
 >- Incorporate into your repertoire when you desire
 
->- 10 ways to do everything (Isn't R awesome?)
+>- 10 ways to do everything (isn't R awesome?!?!)
 
 >- There's strength in continuity and consistency
 
@@ -498,7 +498,7 @@ vec %>%
 ```
 
 
-#But don't do either of the above for this ("vec*2")
+#But don't do either of the above for this (`vec*2`)
 
 
 ## purrr::map functions: also a lot more than I can discuss
@@ -565,6 +565,7 @@ df_list <- list(mtcars = mtcars,
 
 #the nrow function isn't important, 
 #the ability to utilize any function here is.
+df_list %>% map_int(nrow)
 ```
 
 
