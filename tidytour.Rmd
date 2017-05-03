@@ -1,0 +1,571 @@
+---
+title: "Tidy-Tou[R]"
+author: "Silas Tittes"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  beamer_presentation:
+    theme: "boxes"
+    colortheme: "seahorse"
+    fonttheme: "structurebold"
+    fig_caption: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.lp = '')
+```
+
+
+
+#library(tidyverse)
+```{r, echo=FALSE, results='hide'}
+suppressMessages(library(tidyverse))
+suppressMessages(library(RCurl))
+suppressMessages(library(xtable))
+```
+
+
+##Outline
+>- General motivation
+
+>- tidyr
+
+>- dplyr
+
+>- ggplot2
+
+>- purrr
+
+
+
+## General motivation: Make reproducibility easy
+>- Transparency is an obligation
+
+>- Be lazy as possible
+
+>- Do as little "by hand" manipulation of data as possible
+
+>- Make your code fast and readable
+
+
+##Quick note to the experienced R users new to the tidyverse
+
+>- You might find yourself saying, "That's cool and all, but I prefer ..."
+
+>- Incorporate into your repertoire when you desire
+
+>- 10 ways to do everything (Isn't R awesome?)
+
+>- There's strength in continuity and consistency
+
+>- Hadley (usually) knows best
+
+>- Who?
+
+##Free book: Google "R for data science"
+![](wickham.jpg)
+
+
+##Who is my audience today?
+```{r, echo = FALSE}
+means <- seq(1, 20, length.out = 2)
+vals <- as_vector(means %>% map(~ rnorm(n = 1000, mean = .x)))
+par(mar = c(5,5.5,4,2)*1.1)
+plot(density(vals, bw = 2),
+     lwd = 3,
+     axes = F, main = "", 
+     xlab = "R skillz", cex.lab = 2.5)
+axis(side = 1, at = means, labels = F)
+axis(side = 2, labels = F)
+text(10.5, 0.04, "AM I HERE?", col = "red", cex = 2)
+arrows(x0 = 10, y0 = 0.03, x1 = 10, y1 = 0, col = "red", lwd = 3)
+```
+
+
+## The curse of data, data1, data2 ...
+```{r, eval=FALSE}
+data <- read.csv("datafile")
+data1 <- data[,c(1,2,3)]
+data2 <- subset(data1, column1 == "test")
+data3 <- ...
+```
+![](liz-lemon-blerg.jpg)
+
+
+# Life is better with %>% (pipe)
+
+##Simple example with %>%
+```{r}
+iris[,3:5] %>% 
+  head(5)
+```
+
+
+##Emphasis on verbs instead of nouns 
+```{r, eval=FALSE}
+subject %>% (then)
+  action1 %>% (then)
+  action2 %>% (then)
+  action3
+```
+
+
+
+##Exercise
+Get the 5th to last row of the `iris` dataframe using %>% twice
+(there are much better ways to achieve this -- just for practice)
+
+
+##My solution
+```{r}
+iris[,3:5] %>% 
+  tail(5) %>% 
+  head(1)
+```
+
+
+
+## Using %>%
+Benefits of approach include:
+
+> Readability
+
+> Scalability
+
+> Consistency
+
+> Ease of use
+
+
+#tidyr
+
+
+##Make some example data
+```{r}
+samps <- 5
+ducks <- data.frame(duck = rnorm(samps),
+                    goose = c(rnorm(samps - 1), NA),
+                    idx = 1:samps)
+```
+
+
+##make data loooong
+
+\begin{columns}
+\begin{column}{0.4\linewidth}
+\begin{itemize}[<only@+(1)>]
+  \item What's the problem?
+  \item How do we fix it?
+\end{itemize}
+\end{column}
+\begin{column}{0.7\linewidth}
+```{r, results='asis', echo=FALSE}
+print(xtable(ducks), comment = FALSE)
+```
+\end{column}
+\end{columns}
+
+
+##`tidyr::gather()` makes data frames long
+```{r}
+ducks_td <- ducks %>% 
+  gather(key = "bird_type", value = "temp", -idx) %>%
+  drop_na()
+```
+
+
+```{r, results='asis', echo=FALSE}
+print(xtable(ducks_td), comment = F)
+```
+
+
+##`tidyr::spread()` makes data wide (sometimes useful)
+```{r}
+ducks_wd <- ducks_td %>% 
+  spread(bird_type, temp)
+```
+
+
+```{r, results='asis', echo=FALSE}
+print(xtable(ducks_wd), comment = FALSE)
+```
+
+
+##Exercise
+
+>- Check out the `VADeaths` data matrix (comes with base r)
+
+>- Make `VADeaths` a data frame, *then* make it long
+
+
+##One solution
+```{r}
+data.frame(VADeaths) %>% 
+  gather(key = "municipal.sex", value = "deaths_K") %>%
+  head(5)
+```
+
+
+
+##`tidyr::separate()` to split a single variable into multiple
+```{r}
+data.frame(VADeaths) %>% 
+  gather(key = "municipal.sex", value = "deaths_K") %>%
+  separate(col = municipal.sex, 
+           into = c("munic","sx"), 
+           sep = "\\.") %>%
+  head(5)
+```
+
+
+
+#dplyr: a glorious catch-all tool
+
+
+##dplyr
+>- dplyr can do more than what I could show in 50 minutes
+
+>- I still have a lot to learn about the functions
+
+>- Let's talk about a few
+
+## `dplyr::select()` for accessing columns
+```{r}
+#by index, name, or mixture of two
+iris %>% 
+  select(1, Petal.Length) %>% 
+  head(5)
+```
+
+
+##`dply::arrange()` for ordering rows
+```{r}
+#desc() for descending order
+iris %>% 
+  arrange(Species, Sepal.Width, desc(Sepal.Length)) %>% 
+  select(Sepal.Width, Sepal.Length, Species) %>%
+  head(5)
+```
+
+
+##`dply::filter()` is like base r's `subset()`
+```{r}
+#notice all columns would be returned w/o pipe to select()
+iris %>% 
+  filter(Species == "setosa", Sepal.Length < 6) %>%
+  select(Sepal.Length, Species) %>%
+  head(5)
+```
+
+##`dply::mutate()` add new columns
+```{r}
+iris %>% 
+  mutate(Sepal.Area = Sepal.Length * Sepal.Width) %>%
+  select(Sepal.Area, Species) %>%
+  head(5)
+```
+
+
+##`dply::group_by()` and `dply::summarise()`
+```{r}
+#note: group_by() can be used with multiple variables
+iris %>% 
+  group_by(Species) %>%
+  summarise(mean_SL = mean(Sepal.Length),
+            sd_SL = sd(Sepal.Length),
+            q25 = quantile(Sepal.Length, 0.25),
+            q75 = quantile(Sepal.Length, 0.75))
+```
+
+##`dply::sample_n()`
+```{r}
+#also see new modelr package for more like this
+iris %>%
+  sample_n(2) %>% 
+  select(Petal.Length, Species)
+```
+
+
+##`dply::sample_frac()`
+```{r}
+iris %>%
+  sample_frac(0.02) %>% 
+  select(Petal.Length, Species)
+```
+
+
+
+##group_by() and n()
+```{r}
+#surprisingly hard in base R
+iris %>% 
+  group_by(Species) %>%
+  mutate(counts = n()) %>%
+  select(Species, counts) %>%
+  sample_n(2)
+```
+
+
+##Exercise
+Using the tidy version of VADeaths, generate a mean and variance for the number of deaths
+for each municipal-sex combination (group by municipality and sex, *then* computer the mean and standard deviation of deaths).
+
+
+##One solution
+```{r}
+death_sum <- data.frame(VADeaths) %>% 
+  gather(key = "municipal.sex", value = "deaths_K") %>%
+  separate(col = municipal.sex, 
+           into = c("munic","sx"), sep = "\\.") %>%
+  group_by(munic, sx) %>% 
+  summarise(mean_death = mean(deaths_K), 
+            sd_death = sd(deaths_K))
+```
+
+
+##Result
+```{r, results='asis', echo = FALSE}
+print(xtable(death_sum), comment = F)
+```
+
+
+#ggplot2
+
+
+##ggplot2 template
+```{r, eval=FALSE}
+#default:
+ggplot(data = <DATA>) + 
+  <GEOM_FUNCTION>(mapping = aes(<MAPPINGS>))
+
+#alternative 1:
+<DATA> %>% 
+  ggplot( ) + 
+  <GEOM_FUNCTION>(mapping = aes(<MAPPINGS>))
+
+#alternative 2 (my usual preference):
+<DATA> %>% 
+  ggplot(mapping = aes(<MAPPINGS>)) + 
+  <GEOM_FUNCTION>()
+```
+
+
+##simple example
+```{r}
+p <- mtcars %>% 
+  ggplot(aes(x = drat, y = wt)) +
+  geom_point() 
+```
+
+##simple example 1
+```{r, echo=FALSE}
+p
+```
+
+
+##Looks bad on my screen, but easy to fix
+```{r}
+p <- mtcars %>% 
+  ggplot(aes(x = drat, y = wt)) +
+  geom_point() +
+  theme_gray(base_size = 30)
+```
+
+
+##simple example 1
+```{r, echo=FALSE}
+p
+```
+
+
+
+##simple example 2
+```{r}
+p <- mtcars %>% 
+  ggplot(aes(x = drat, y = wt, size = hp)) +
+  geom_point(aes(colour = factor(am)), alpha = 0.5) +
+  xlab("Rear axle ratio") +
+  ylab("Weight") +
+  theme_classic(base_size = 20)
+```
+
+##simple example 2
+```{r, echo=FALSE}
+p
+```
+
+
+##violin plots are cool!
+```{r}
+p <- iris %>% 
+  ggplot(aes(x = Species, 
+             y = Petal.Width, 
+             fill = Species)) +
+  geom_violin(alpha = 0.3) +
+  theme_minimal(base_size = 30)
+```
+
+
+##Result
+```{r, echo=FALSE}
+p
+```
+
+
+##Plots with multiple panels
+```{r}
+p <- mtcars %>%
+  ggplot(aes(x = hp, y = mpg)) +
+  geom_point() +
+  facet_wrap(~ vs) +
+  theme_light(base_size = 30)
+```
+##Result
+```{r, echo=FALSE}
+p
+```
+
+
+##Plots with multiple panels
+```{r}
+p <- mtcars %>%
+  mutate(tran = ifelse(am == 0, 
+                  "automatic", 
+                  "manual")) %>%
+  ggplot(aes(x = hp, y = mpg)) +
+  geom_point() +
+  facet_wrap(~ tran) +
+  theme_light(base_size = 30)
+```
+
+##Result
+```{r, echo=FALSE}
+p
+```
+
+
+##Exercise
+
+Using the tidiest version of VADeaths, make a plot of death rate by sex, with panels for municipal
+
+##My solution
+```{r}
+p <- data.frame(VADeaths) %>% 
+  mutate(age_group = rownames(VADeaths)) %>%
+  gather("pop_group", "death_rate", -age_group) %>% 
+  separate(pop_group, c("municipal","sex"), 
+           sep = "\\.") %>%
+  ggplot(aes(x = sex, y = death_rate)) + #new stuff below
+  geom_jitter(width = 0.1) +
+  facet_grid(~municipal) +
+  geom_pointrange(stat = "summary",
+              fun.ymin = function(z) quantile(z,0.25),
+              fun.ymax = function(z) quantile(z,0.75),
+              fun.y = mean, colour = "dodgerblue", 
+              alpha = 0.5, lwd = 2) +
+  theme_classic(base_size = 30)
+```
+
+##Result
+```{r, echo=FALSE}
+p
+```
+
+#purrr:functional programming (like lapply/sapply, but safer) 
+
+##Explicit loops are slow (in R) and tedious to write
+```{r}
+#for example
+vec <- 1:4
+
+store <- rep(NA, length(vec))
+for(i in vec){
+  store[i] <- i*2
+}
+store
+```
+
+
+##functional "loop" version
+```{r}
+vec <- 1:4
+
+vec %>% 
+  map_dbl(function(x) x * 2)
+
+# or
+vec %>% 
+  map_dbl(~ .x * 2)
+```
+
+
+#But don't do either of the above for this ("vec*2")
+
+
+## purrr::map functions: also a lot more than I can discuss
+
+>- `map()` -- returns a list
+
+>- `map_dbl()` -- returns a vector of doubles
+
+>- `map_lgl()` -- returns a vector of integers
+
+>- `map_int()` -- returns a vector of integers
+
+>- `map_df()` -- returns a dataframe
+
+
+##Important to understand lists and other data types
+```{r}
+my_list <- list(1, TRUE, rnorm(2), "lists!!")
+#access with double brackets [[]]
+my_list[[3]]
+```
+
+
+##`purrr::map()`
+```{r}
+#I() is the identity function
+#same as function(x) x
+my_list %>% 
+  map(I)
+```
+
+##`purrr::map_dbl()`
+```{r}
+mtcars %>%
+  map_dbl(mean) %>%
+  head(5)
+```
+
+##`purrr::map_lgl()`
+```{r}
+mtcars %>%
+  map_lgl(is.numeric) %>%
+  head(5)
+```
+
+##`purrr::map_int()`
+```{r}
+mtcars %>%
+  map_int(length) %>%
+  head(5)
+```
+
+##`purrr::map_df()`
+```{r}
+1:4 %>%
+  map_df( ~ data.frame(rbind(rnorm(3))))
+```
+
+##Here's a weird one
+```{r}
+df_list <- list(mtcars = mtcars, 
+                 iris = iris, 
+                 VADeaths = VADeaths)
+
+#the nrow function isn't important, 
+#the ability to utilize any function here is.
+```
+
+
+
